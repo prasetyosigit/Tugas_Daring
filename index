@@ -42,7 +42,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kumpul Tugas</h1>
+  <h1>Kumpul Tugas Daring</h1>
   <p class="sub">Isi data, foto hasil tugasmu, lalu kirim.</p>
 
   <form id="f" class="card" autocomplete="off">
@@ -85,7 +85,7 @@
 
 <script>
 /* ====== PENGATURAN: ganti dengan URL Web App Apps Script Anda ====== */
-const API_URL = 'https://script.google.com/macros/s/GANTI_DENGAN_ID_DEPLOYMENT/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyZAFOH1NLIzCHzCvS-JbwrhFoDh0taS2P9Zr5qGw8apvMLwuy-ZxcYyFTBdMaOhiO1hA/exec';
 const KELAS = ['X TP 1', 'X TP 3', 'XI TP 1', 'XI TP 2', 'XI TP 3'];
 const MAX_SISI = 1600;        // sisi terpanjang foto (px)
 const MAX_BASE64 = 4 * 1024 * 1024 - 1000; // harus sama dengan CFG.MAX_BASE64 di server
