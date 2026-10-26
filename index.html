@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kumpul Tugas</title>
+<title>Kumpul Tugas Daring</title>
 <style>
   :root{--bg:#f4f6fa;--card:#fff;--tx:#1b2330;--mut:#667085;--pri:#1a56db;--ok:#157f3b;--err:#b3261e;--bd:#d6dbe4}
   *{box-sizing:border-box}
@@ -84,20 +84,22 @@
 </div>
 
 <script>
-/* ====== PENGATURAN: ganti dengan URL Web App Apps Script Anda ====== */
+/* ====== PENGATURAN ====== */
 const API_URL = 'https://script.google.com/macros/s/AKfycbyZAFOH1NLIzCHzCvS-JbwrhFoDh0taS2P9Zr5qGw8apvMLwuy-ZxcYyFTBdMaOhiO1hA/exec';
 const KELAS = ['X TP 1', 'X TP 3', 'XI TP 1', 'XI TP 2', 'XI TP 3'];
-const MAX_SISI = 1600;        // sisi terpanjang foto (px)
-const MAX_BASE64 = 4 * 1024 * 1024 - 1000; // harus sama dengan CFG.MAX_BASE64 di server
+const MAX_SISI = 1600;                      // sisi terpanjang foto (px)
+const MAX_BASE64 = 4 * 1024 * 1024 - 1000;  // harus sama dengan CFG.MAX_BASE64 di server
 const MAX_FOTO = 10;
 
 const $ = id => document.getElementById(id);
 const files = []; // {blob, url, status}
+let sibuk = false;
 
 // ---- inisialisasi ----
+const ph = document.createElement('option');
+ph.value = ''; ph.textContent = 'Pilih…'; ph.disabled = true; ph.selected = true;
+$('kelas').appendChild(ph);
 KELAS.forEach(k => { const o = document.createElement('option'); o.value = o.textContent = k; $('kelas').appendChild(o); });
-const ph = document.createElement('option'); ph.value = ''; ph.textContent = 'Pilih…'; ph.disabled = true; ph.selected = true;
-$('kelas').insertBefore(ph, $('kelas').firstChild);
 
 const params = new URLSearchParams(location.search);
 if (params.get('mapel') || params.get('tugas')) $('tugas').value = params.get('mapel') || params.get('tugas');
@@ -183,7 +185,6 @@ function render() {
 }
 
 // ---- kirim ----
-let sibuk = false;
 function kirimSatu(data) {
   return fetch(API_URL, {
     method: 'POST',
@@ -203,10 +204,8 @@ function keBase64(blob) {
 $('f').addEventListener('submit', async e => {
   e.preventDefault();
   if (sibuk) return;
-  if (API_URL.includes('GANTI_DENGAN')) return tampil('URL Apps Script belum diisi di kode (API_URL).', 'err');
-  const antre = files.filter(f => f.status !== 'ok');
   if (!files.length) return tampil('Tambahkan minimal satu foto.', 'err');
-  if (!antre.length) return tampil('Semua foto sudah terkirim.', 'ok');
+  if (!files.filter(f => f.status !== 'ok').length) return tampil('Semua foto sudah terkirim.', 'ok');
 
   sibuk = true; $('send').disabled = true; simpanLokal(); render();
   $('bar').style.display = 'block'; $('barI').style.width = '0%';
