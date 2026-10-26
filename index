@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kumpul Tugas</title>
+<style>
+  :root{--bg:#f4f6fa;--card:#fff;--tx:#1b2330;--mut:#667085;--pri:#1a56db;--ok:#157f3b;--err:#b3261e;--bd:#d6dbe4}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:520px;margin:0 auto;padding:16px 16px 40px}
+  h1{font-size:1.35rem;margin:8px 0 2px}
+  .sub{color:var(--mut);margin:0 0 16px;font-size:.92rem}
+  .card{background:var(--card);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:14px}
+  label{display:block;font-weight:600;font-size:.9rem;margin:12px 0 4px}
+  label:first-child{margin-top:0}
+  input,select{width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:1rem;background:#fff;color:var(--tx)}
+  input:focus,select:focus{outline:2px solid var(--pri);border-color:transparent}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pick{display:flex;gap:8px;margin-top:4px}
+  .btn{flex:1;padding:12px;border:0;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer}
+  .btn.sec{background:#e8eefc;color:var(--pri)}
+  .btn.main{background:var(--pri);color:#fff;width:100%;margin-top:6px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .th{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#eee}
+  .th img{width:100%;height:100%;object-fit:cover;display:block}
+  .th button{position:absolute;top:4px;right:4px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1;cursor:pointer}
+  .th .st{position:absolute;left:0;right:0;bottom:0;padding:2px 4px;font-size:.75rem;color:#fff;background:rgba(0,0,0,.55);text-align:center}
+  .th.done .st{background:rgba(21,127,59,.9)}
+  .th.fail .st{background:rgba(179,38,30,.9)}
+  .msg{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:.95rem;display:none}
+  .msg.ok{display:block;background:#e6f4ea;color:var(--ok)}
+  .msg.err{display:block;background:#fce8e6;color:var(--err)}
+  .msg.info{display:block;background:#eef2ff;color:#2b3a8c}
+  .bar{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin-top:10px;display:none}
+  .bar i{display:block;height:100%;width:0;background:var(--pri);transition:width .2s}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:10px}
+  th,td{text-align:left;padding:6px 4px;border-bottom:1px solid #eee}
+  .link{background:none;border:0;color:var(--pri);font-weight:600;cursor:pointer;padding:0;font-size:.95rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Kumpul Tugas</h1>
+  <p class="sub">Isi data, foto hasil tugasmu, lalu kirim.</p>
+
+  <form id="f" class="card" autocomplete="off">
+    <label for="tugas">Mata pelajaran</label>
+    <input id="tugas" type="text" placeholder="contoh: Gambar Teknik" required>
+
+    <div class="row">
+      <div>
+        <label for="kelas">Kelas</label>
+        <select id="kelas" required></select>
+      </div>
+      <div>
+        <label for="absen">No. absen</label>
+        <input id="absen" type="number" inputmode="numeric" min="1" max="99" required>
+      </div>
+    </div>
+
+    <label for="nama">Nama lengkap</label>
+    <input id="nama" type="text" maxlength="60" required>
+
+    <label>Foto tugas</label>
+    <div class="pick">
+      <button type="button" class="btn sec" id="btnCam">📷 Kamera</button>
+      <button type="button" class="btn sec" id="btnGal">🖼️ Galeri</button>
+    </div>
+    <input id="inCam" type="file" accept="image/*" capture="environment" hidden>
+    <input id="inGal" type="file" accept="image/*" multiple hidden>
+    <div class="thumbs" id="thumbs"></div>
+
+    <div class="bar" id="bar"><i id="barI"></i></div>
+    <div class="msg" id="msg"></div>
+    <button class="btn main" id="send" type="submit">Kirim tugas</button>
+  </form>
+
+  <div class="card">
+    <button class="link" id="btnCek" type="button">Lihat siapa yang sudah mengumpulkan</button>
+    <div id="cekOut"></div>
+  </div>
+</div>
+
+<script>
+/* ====== PENGATURAN: ganti dengan URL Web App Apps Script Anda ====== */
+const API_URL = 'https://script.google.com/macros/s/GANTI_DENGAN_ID_DEPLOYMENT/exec';
+const KELAS = ['X TP 1', 'X TP 3', 'XI TP 1', 'XI TP 2', 'XI TP 3'];
+const MAX_SISI = 1600;        // sisi terpanjang foto (px)
+const MAX_BASE64 = 4 * 1024 * 1024 - 1000; // harus sama dengan CFG.MAX_BASE64 di server
+const MAX_FOTO = 10;
+
+const $ = id => document.getElementById(id);
+const files = []; // {blob, url, status}
+
+// ---- inisialisasi ----
+KELAS.forEach(k => { const o = document.createElement('option'); o.value = o.textContent = k; $('kelas').appendChild(o); });
+const ph = document.createElement('option'); ph.value = ''; ph.textContent = 'Pilih…'; ph.disabled = true; ph.selected = true;
+$('kelas').insertBefore(ph, $('kelas').firstChild);
+
+const params = new URLSearchParams(location.search);
+if (params.get('mapel') || params.get('tugas')) $('tugas').value = params.get('mapel') || params.get('tugas');
+try {
+  ['kelas', 'absen', 'nama'].forEach(k => { const v = localStorage.getItem('tugas_' + k); if (v) $(k).value = v; });
+} catch (_) {}
+
+function simpanLokal() {
+  try { ['kelas', 'absen', 'nama'].forEach(k => localStorage.setItem('tugas_' + k, $(k).value)); } catch (_) {}
+}
+function tampil(teks, jenis) {
+  const m = $('msg'); m.className = 'msg ' + jenis; m.textContent = teks;
+}
+
+// ---- pilih foto ----
+$('btnCam').onclick = () => $('inCam').click();
+$('btnGal').onclick = () => $('inGal').click();
+['inCam', 'inGal'].forEach(id => $(id).addEventListener('change', e => {
+  tambah(Array.from(e.target.files)); e.target.value = '';
+}));
+
+async function tambah(list) {
+  for (const f of list) {
+    if (files.length >= MAX_FOTO) { tampil('Maksimal ' + MAX_FOTO + ' foto.', 'err'); break; }
+    if (!f.type.startsWith('image/')) continue;
+    try {
+      const blob = await kompres(f);
+      files.push({ blob, url: URL.createObjectURL(blob), status: '' });
+    } catch (err) {
+      tampil('Foto tidak bisa dibaca: ' + f.name, 'err');
+    }
+  }
+  render();
+}
+
+function kompres(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const u = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(u);
+      let sisi = MAX_SISI, q = 0.82;
+      const coba = () => {
+        const s = Math.min(1, sisi / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => {
+          if (!b) return rej(new Error('gagal'));
+          if (b.size * 4 / 3 > MAX_BASE64 && (q > 0.4 || sisi > 800)) {
+            if (q > 0.4) q -= 0.15; else sisi -= 300;
+            return coba();
+          }
+          res(b);
+        }, 'image/jpeg', q);
+      };
+      coba();
+    };
+    img.onerror = () => { URL.revokeObjectURL(u); rej(new Error('gagal')); };
+    img.src = u;
+  });
+}
+
+function render() {
+  const t = $('thumbs'); t.innerHTML = '';
+  files.forEach((f, i) => {
+    const d = document.createElement('div');
+    d.className = 'th' + (f.status === 'ok' ? ' done' : f.status === 'gagal' ? ' fail' : '');
+    d.innerHTML = '<img alt="">';
+    d.firstChild.src = f.url;
+    if (f.status === 'ok' || f.status === 'gagal' || f.status === 'kirim') {
+      const s = document.createElement('div'); s.className = 'st';
+      s.textContent = f.status === 'ok' ? '✓ Terkirim' : f.status === 'gagal' ? 'Gagal' : 'Mengirim…';
+      d.appendChild(s);
+    }
+    if (!sibuk && f.status !== 'ok') {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = '×';
+      b.onclick = () => { URL.revokeObjectURL(f.url); files.splice(i, 1); render(); };
+      d.appendChild(b);
+    }
+    t.appendChild(d);
+  });
+}
+
+// ---- kirim ----
+let sibuk = false;
+function kirimSatu(data) {
+  return fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari preflight CORS
+    body: JSON.stringify(data)
+  }).then(r => r.json());
+}
+function keBase64(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+
+$('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (sibuk) return;
+  if (API_URL.includes('GANTI_DENGAN')) return tampil('URL Apps Script belum diisi di kode (API_URL).', 'err');
+  const antre = files.filter(f => f.status !== 'ok');
+  if (!files.length) return tampil('Tambahkan minimal satu foto.', 'err');
+  if (!antre.length) return tampil('Semua foto sudah terkirim.', 'ok');
+
+  sibuk = true; $('send').disabled = true; simpanLokal(); render();
+  $('bar').style.display = 'block'; $('barI').style.width = '0%';
+  tampil('Mengirim… jangan tutup halaman ini.', 'info');
+
+  const total = files.length;
+  let berhasil = 0, gagal = 0, galat = '';
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    if (f.status === 'ok') { berhasil++; continue; }
+    f.status = 'kirim'; render();
+    try {
+      let hasil;
+      for (let coba = 0; coba < 2; coba++) { // ulang sekali bila jaringan putus
+        try {
+          hasil = await kirimSatu({
+            kelas: $('kelas').value, absen: $('absen').value,
+            nama: $('nama').value.trim(), tugas: $('tugas').value.trim(),
+            index: i + 1, total, foto: await keBase64(f.blob)
+          });
+          break;
+        } catch (err) { if (coba) throw err; }
+      }
+      if (!hasil.ok) throw new Error(hasil.error || 'Gagal');
+      f.status = 'ok'; berhasil++;
+    } catch (err) {
+      f.status = 'gagal'; gagal++; galat = String(err.message || err);
+    }
+    $('barI').style.width = Math.round((i + 1) / total * 100) + '%';
+    render();
+  }
+  sibuk = false; $('send').disabled = false; render();
+  if (gagal) {
+    tampil(berhasil + ' foto terkirim, ' + gagal + ' gagal (' + galat + '). Tekan "Kirim tugas" lagi untuk mengulang yang gagal.', 'err');
+    files.forEach(f => { if (f.status === 'gagal') f.status = ''; });
+  } else {
+    tampil('✓ Selesai! ' + berhasil + ' foto sudah terkirim ke guru.', 'ok');
+  }
+});
+
+// ---- cek pengumpulan ----
+$('btnCek').onclick = async () => {
+  const out = $('cekOut');
+  if (!$('kelas').value || !$('tugas').value.trim()) { out.textContent = 'Isi dulu kelas dan mata pelajaran di atas.'; return; }
+  out.textContent = 'Memuat…';
+  try {
+    const q = new URLSearchParams({ kelas: $('kelas').value, tugas: $('tugas').value.trim() });
+    const r = await (await fetch(API_URL + '?' + q)).json();
+    if (!r.ok) throw new Error(r.error);
+    if (!r.list.length) { out.textContent = 'Belum ada yang mengumpulkan.'; return; }
+    const tb = document.createElement('table');
+    tb.innerHTML = '<tr><th>Absen</th><th>Nama</th><th>Foto</th><th>Waktu</th></tr>';
+    r.list.forEach(x => {
+      const tr = tb.insertRow();
+      [x.absen, x.nama, x.jumlah, x.waktu].forEach(v => { tr.insertCell().textContent = v; });
+    });
+    out.innerHTML = ''; out.appendChild(tb);
+  } catch (err) { out.textContent = 'Gagal memuat: ' + (err.message || err); }
+};
+</script>
+</body>
+</html>
